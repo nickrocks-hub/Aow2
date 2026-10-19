@@ -24,10 +24,21 @@ final class Voice {
     private boolean ready = false;
     private String voiceName = "default";
     private String pendingTest;
+    private final Context ctx;
+    private boolean failed = false;
 
     Voice(Context ctx) {
-        tts = new TextToSpeech(ctx.getApplicationContext(), status -> {
-            if (status != TextToSpeech.SUCCESS) { Log.w(TAG, "TTS init failed: " + status); return; }
+        this.ctx = ctx.getApplicationContext();
+        tts = new TextToSpeech(this.ctx, status -> {
+            if (status != TextToSpeech.SUCCESS) {
+                Log.w(TAG, "TTS init failed: " + status);
+                failed = true;
+                toast("No text-to-speech engine found. Install \"Speech Services by Google\" from the Play Store.");
+                return;
+            }
+            int lang = tts.setLanguage(Locale.US);
+            if (lang == TextToSpeech.LANG_MISSING_DATA || lang == TextToSpeech.LANG_NOT_SUPPORTED)
+                toast("English voice data missing: Settings > Text-to-speech > install English (US).");
             setup();
             ready = true;
             if (pendingTest != null) { speak(pendingTest, true); pendingTest = null; }
@@ -35,9 +46,8 @@ final class Voice {
     }
 
     private void setup() {
-        tts.setLanguage(Locale.US);
         tts.setAudioAttributes(new AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_MEDIA)   // media volume: still plays when the phone is on silent
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build());
         android.speech.tts.Voice male = findMale();
         if (male != null) {
@@ -73,9 +83,17 @@ final class Voice {
 
     String voiceName() { return voiceName; }
 
+    boolean failed() { return failed; }
+
+    private void toast(String m) {
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_LONG).show());
+    }
+
     /** Speaks a line. interrupt=true cuts off whatever is playing; otherwise busy = skip. */
     void speak(String text, boolean interrupt) {
         if (text == null || tts == null) return;
+        if (failed) return;
         if (!ready) { if (interrupt) pendingTest = text; return; }
         if (!interrupt && tts.isSpeaking()) return;
         tts.speak(text, interrupt ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null, "c" + System.nanoTime());

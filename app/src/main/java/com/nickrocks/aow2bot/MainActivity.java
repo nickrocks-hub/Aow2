@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
         test.setOnClickListener(v -> {
             if (voice == null) voice = new Voice(this);
             voice.speak(com.nickrocks.aow2bot.ai.Commentator.sample(), true);
+            v.postDelayed(() -> { if (voice != null && !voice.failed()) toast("Voice: " + voice.voiceName() + "  (turn up media volume)"); }, 1500);
         });
         opts.addView(test);
         opts.addView(divider());
