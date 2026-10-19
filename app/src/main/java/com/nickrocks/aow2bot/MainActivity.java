@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     static final int GOOD = 0xFF43A047, BAD = 0xFFE53935;
 
     private TextView accPill, capPill;
+    private Voice voice;
     private LinearLayout learnRows;
     private final List<View> styleCards = new ArrayList<>();
     private final List<String> styleNames = new ArrayList<>();
@@ -87,6 +88,16 @@ public class MainActivity extends Activity {
         LinearLayout opts = card(body, "Options", null);
         opts.addView(toggle("Use the meteor spell", "When the base is under pressure or a big fight is on",
                 prefs.getBoolean(Prefs.KEY_SPELL, true), on -> prefs.edit().putBoolean(Prefs.KEY_SPELL, on).apply()));
+        opts.addView(divider());
+        opts.addView(toggle("\uD83C\uDF99\uFE0F Funny AI commentary", "A male sports-caster voice reacts to the battle (works offline)",
+                prefs.getBoolean(Prefs.KEY_VOICE, true), on -> prefs.edit().putBoolean(Prefs.KEY_VOICE, on).apply()));
+        TextView test = linkButton("\u25B6  Hear the commentator");
+        test.setPadding(0, 0, 0, dp(8));
+        test.setOnClickListener(v -> {
+            if (voice == null) voice = new Voice(this);
+            voice.speak(com.nickrocks.aow2bot.ai.Commentator.sample(), true);
+        });
+        opts.addView(test);
         opts.addView(divider());
         opts.addView(toggle("Buy towers and upgrades", "Off = units, spell and evolving only",
                 prefs.getBoolean(Prefs.KEY_BUY, true), on -> prefs.edit().putBoolean(Prefs.KEY_BUY, on).apply()));
@@ -371,6 +382,12 @@ public class MainActivity extends Activity {
                 .putExtra(CaptureService.EXTRA_DATA, data);
         startForegroundService(svc);
         accPill.postDelayed(this::refresh, 800);
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (voice != null) voice.shutdown();
+        super.onDestroy();
     }
 
     private void toast(String m) { Toast.makeText(this, m, Toast.LENGTH_SHORT).show(); }

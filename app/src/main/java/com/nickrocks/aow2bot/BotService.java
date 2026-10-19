@@ -23,6 +23,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.nickrocks.aow2bot.ai.Brain;
+import com.nickrocks.aow2bot.ai.Commentator;
 import com.nickrocks.aow2bot.ai.Learner;
 import com.nickrocks.aow2bot.ai.Profile;
 import com.nickrocks.aow2bot.vision.Frame;
@@ -74,6 +75,9 @@ public class BotService extends AccessibilityService {
     private Brain brain;
     private Learner learner;
     private String profileMode = "Auto";
+    private final Commentator commentator = new Commentator();
+    private volatile boolean voiceOn = true;
+    private Voice voice;
 
     public static boolean isRunning() { return instance != null; }
 
@@ -88,6 +92,7 @@ public class BotService extends AccessibilityService {
         instance = this;
         stopped = false;
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
+        voice = new Voice(this);
         showPanel();
         handler.post(statusTick);
     }
@@ -216,6 +221,7 @@ public class BotService extends AccessibilityService {
         SharedPreferences p = Prefs.get(this);
         profileMode = p.getString(Prefs.KEY_PROFILE, "Auto");
         final boolean useSpell = p.getBoolean(Prefs.KEY_SPELL, true), buy = p.getBoolean(Prefs.KEY_BUY, true);
+        voiceOn = p.getBoolean(Prefs.KEY_VOICE, true);
         rec = new Recorder(this);
         running = true; paused = false; taps = 0;
         line1 = "Starting… log: " + rec.where(); line2 = "";
@@ -270,6 +276,8 @@ public class BotService extends AccessibilityService {
                 if (d.outcome == Brain.Outcome.WIN) wins++;
                 else if (d.outcome == Brain.Outcome.LOSS) losses++;
                 if (d.outcome != Brain.Outcome.UNKNOWN) toast("Battle result saved: " + d.outcome);
+                if (voiceOn && voice != null && d.outcome != Brain.Outcome.UNKNOWN)
+                    voice.speak(commentator.react(null, d.events, d.outcome, System.currentTimeMillis()), true);
             });
         });
         if (rec != null) rec.event("\"event\":\"end\",\"why\":" + Recorder.q(why) + ",\"wins\":" + wins + ",\"losses\":" + losses);
@@ -319,6 +327,7 @@ public class BotService extends AccessibilityService {
         final List<String> events = new ArrayList<>();
         Brain.Outcome outcome;
         boolean snap;
+        String say;
     }
 
     private long popMissingSince = 0, lastAutoSnap = 0;
@@ -358,6 +367,7 @@ public class BotService extends AccessibilityService {
         }
         d.status = brain.status();
         d.profile = brain.profile.name;
+        if (voiceOn) d.say = commentator.react(s, d.events, d.outcome, now);
     }
 
     private void act(Frame frame, Decision d) {
@@ -368,6 +378,10 @@ public class BotService extends AccessibilityService {
             if (d.outcome == Brain.Outcome.WIN) wins++;
             else if (d.outcome == Brain.Outcome.LOSS) losses++;
             toast(d.outcome == Brain.Outcome.WIN ? "Battle won!" : d.outcome == Brain.Outcome.LOSS ? "Battle lost — noted, trying another style next" : "Battle over");
+        }
+        if (d.say != null && voice != null) {
+            voice.speak(d.say, d.outcome != null);
+            rec.event("\"event\":\"say\",\"text\":" + Recorder.q(d.say));
         }
         if (d.snap && now - lastSnapAt > 30000) { lastSnapAt = now; CaptureService.requestSaveFrame(); }
         GameState s = d.state;
@@ -461,6 +475,7 @@ public class BotService extends AccessibilityService {
         handler.removeCallbacksAndMessages(null);
         CaptureService.requestFrame(null);
         removePanel();
+        if (voice != null) { voice.shutdown(); voice = null; }
         instance = null;
     }
 }

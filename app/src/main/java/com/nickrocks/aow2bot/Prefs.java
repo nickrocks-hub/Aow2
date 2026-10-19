@@ -11,6 +11,7 @@ final class Prefs {
     static final String KEY_PROFILE = "profile";        // "Auto" or a profile name
     static final String KEY_SPELL = "useSpell";
     static final String KEY_BUY = "buyUpgrades";
+    static final String KEY_VOICE = "commentary";
 
     static SharedPreferences get(Context c) { return c.getSharedPreferences(FILE, Context.MODE_PRIVATE); }
 
