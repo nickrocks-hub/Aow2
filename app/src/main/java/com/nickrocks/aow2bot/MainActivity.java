@@ -89,7 +89,7 @@ public class MainActivity extends Activity {
         opts.addView(toggle("Use the meteor spell", "When the base is under pressure or a big fight is on",
                 prefs.getBoolean(Prefs.KEY_SPELL, true), on -> prefs.edit().putBoolean(Prefs.KEY_SPELL, on).apply()));
         opts.addView(divider());
-        opts.addView(toggle("\uD83C\uDF99\uFE0F Funny AI commentary", "A male sports-caster voice reacts to the battle (works offline)",
+        opts.addView(toggle("\uD83C\uDF99\uFE0F Funny AI commentary", "A male cowboy announcer reacts to the battle (works offline)",
                 prefs.getBoolean(Prefs.KEY_VOICE, true), on -> prefs.edit().putBoolean(Prefs.KEY_VOICE, on).apply()));
         TextView test = linkButton("\u25B6  Hear the commentator");
         test.setPadding(0, 0, 0, dp(8));

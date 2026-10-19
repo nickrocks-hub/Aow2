@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Random;
 
 /**
- * An over-excited sports caster who has watched far too much Age of War.
+ * An old cowboy rodeo announcer who wandered into the Stone Age.
  * Turns what the bot sees and does into short spoken lines. No Android code: the app speaks them.
  */
 public final class Commentator {
@@ -17,86 +17,86 @@ public final class Commentator {
     private static final Map<Topic, String[]> LINES = new EnumMap<>(Topic.class);
     static {
         LINES.put(Topic.START, new String[]{
-                "Ladies and gentlemen, welcome to the Stone Age. Today's forecast: clubs, with a chance of more clubs.",
-                "The robot has entered the arena. The humans are nervous. As they should be.",
-                "Good evening, I'm your commentator, and I have absolutely no idea what a dinosaur costs. Let's find out!",
-                "Alright, cavemen, line up. Tonight we evolve or we go extinct. No pressure.",
-                "Another battle! My circuits are tingling. That might be excitement. Or a short circuit.",
-                "Welcome back to Age of War, the only sport where the referee is a volcano."});
+                "Well howdy, folks! Pull up a hay bale, 'cause we got ourselves a stone age showdown.",
+                "Yee-haw! The robot's saddled up, and them cavemen don't know what's comin'.",
+                "Evenin', partner. Tonight's forecast... clubs. With a mighty fine chance of more clubs.",
+                "Alright, y'all. Saddle up them cavemen. We're either evolvin' tonight, or we're goin' extinct.",
+                "Welcome back to Age of War, the only rodeo where the referee... is a volcano.",
+                "Hold onto your hats, folks. This here robot's fixin' to start a war."});
         LINES.put(Topic.SPELL, new String[]{
-                "Meteor incoming! Someone call the dinosaurs, they've seen this one before.",
-                "And he calls down a rock from space! Subtle. Very subtle.",
-                "Special delivery from the sky! No signature required.",
-                "Meteor shower! Bring an umbrella. A very, very strong umbrella.",
-                "That's not weather, that's a strategy.",
-                "Boom! The enemy just learned what astronomy is."});
+                "Meteor comin' in hot! Somebody tell them dinosaurs, they've seen this one before.",
+                "Well, would ya look at that. He's callin' down rocks from the good Lord's own sky.",
+                "Special delivery from up yonder! No signature required, partner.",
+                "Yee-haw! It's rainin' rocks! Best find yourself a sturdy hat.",
+                "That ain't weather, folks. That there's a strategy.",
+                "Kaboom! I reckon them fellers just learned what astronomy is."});
         LINES.put(Topic.EVOLVE, new String[]{
-                "We're evolving! Somebody tell Darwin, he's going to want to see this.",
-                "New age unlocked! Goodbye sticks, hello slightly fancier sticks.",
-                "Evolution complete. Our soldiers now have opinions. And better weapons.",
-                "Look at that! We skipped like ten thousand years of history in one tap.",
-                "Upgrade time! The cavemen have discovered... progress!"});
+                "We're evolvin', y'all! Somebody fetch Mister Darwin, he's gonna wanna see this.",
+                "New age, partner! Goodbye sticks... hello slightly fancier sticks.",
+                "Well, I'll be. Skipped ten thousand years of history with one little tap.",
+                "Evolution's done. Our boys got better weapons, and I reckon better manners too.",
+                "Look at that! These cavemen just discovered progress. Ain't that somethin'."});
         LINES.put(Topic.TOWER, new String[]{
-                "A tower! Finally, a place to sit down and throw things at people.",
-                "Turret built. It doesn't move, it doesn't sleep, it just judges you.",
-                "New defensive structure! Real estate prices on our side of the map just went up.",
-                "Tower is up! Our base now has a bouncer."});
+                "A tower! Finally, a place to sit a spell and throw things at folks.",
+                "Turret's built. Don't move, don't sleep... just sits there judgin' ya. Like my grandpappy.",
+                "New lookout tower, folks. Our side of the ranch just went up in value.",
+                "Tower's up! Our base done hired itself a bouncer."});
         LINES.put(Topic.UPGRADE, new String[]{
-                "Upgrade purchased! Our soldiers have been to the gym.",
-                "Spending gold on upgrades. Responsible! I'm almost proud.",
-                "Ooh, an upgrade. That's the cave equivalent of new sneakers.",
-                "Gold well spent. Probably. I'm a commentator, not an accountant."});
+                "Upgrade bought! Our boys been liftin' hay bales, and it shows.",
+                "Spendin' gold on upgrades. Now that's what I call responsible ranchin'.",
+                "Ooh, an upgrade. That's the cave version of new boots, partner.",
+                "Gold well spent, I reckon. Then again, I'm a commentator, not a banker."});
         LINES.put(Topic.HURT, new String[]{
-                "Ouch! They're hitting our base. That's our house!",
-                "We're taking damage! Somebody do something! Oh wait, that's me.",
-                "The base is getting knocked on, and it is not a friendly visit.",
-                "Hey! Hands off the cave! We just cleaned it!",
-                "Incoming damage! Deploying panic... I mean, soldiers."});
+                "Whoa there! They're hittin' our base. That's our homestead, y'all!",
+                "We're takin' damage! Somebody do somethin'! ...Oh wait. That's me.",
+                "Hey now! Get your grubby paws off our cave, we just swept it!",
+                "They're knockin' on the door, folks, and it ain't the neighbors bringin' pie.",
+                "Incoming! Send in the boys! Send in everybody!"});
         LINES.put(Topic.BASE_LOW, new String[]{
-                "Base health is low! This is fine. Everything is fine. Nothing is fine.",
-                "We're in trouble, folks. If you have a lucky rock, now's the time to rub it.",
-                "Red alert! Our base is held together by hope and mud.",
-                "Okay, okay, deep breaths. Robots don't breathe. Deep processing, then."});
+                "Base is hangin' on by a thread, folks. This is fine. Nothin' is fine.",
+                "We're in a heap of trouble. If you got a lucky horseshoe, now's the time to rub it.",
+                "Red alert, partner! Our base is held together with spit and prayer.",
+                "Easy now... easy. Deep breaths. Well, I don't breathe. But you get the idea."});
         LINES.put(Topic.HIT_ENEMY, new String[]{
-                "Direct hit on the enemy base! Knock knock! Who's there? Pain.",
-                "We're chipping away at their base like a toddler with a cookie.",
-                "Their base is taking damage! Somebody's insurance premium is going up.",
-                "Yes! Hit them right in the architecture!"});
+                "Direct hit on the enemy base! Knock knock! Who's there? Trouble, that's who.",
+                "We're chippin' away at their fort like a woodpecker on a fencepost.",
+                "Their base is hurtin'! Somebody's insurance is goin' up, I tell ya.",
+                "Yee-haw! Right in the architecture!"});
         LINES.put(Topic.ENEMY_LOW, new String[]{
-                "The enemy base is crumbling! Smell that? That's victory. Or the volcano.",
-                "They're almost done! Start warming up the victory dance.",
-                "Their base is barely standing. I'd feel bad, but I'm a robot."});
+                "Their base is crumblin'! Smell that, folks? That's victory. ...Or the volcano.",
+                "They're near done for! Somebody start warmin' up the fiddle.",
+                "Their fort's barely standin'. I'd feel bad for 'em, but I'm a robot."});
         LINES.put(Topic.WIPED, new String[]{
-                "Our whole army is gone! Where did everybody go? Was it something I said?",
-                "And the army has been... deleted. Rebuilding. Again.",
-                "Total wipeout. Well, cavemen are cheap. Probably."});
+                "Our whole posse's gone! Where'd everybody go? Was it somethin' I said?",
+                "And the army has been... sent to the big ranch in the sky. Rebuildin'.",
+                "Total wipeout, folks. Well... cavemen come cheap. I hope."});
         LINES.put(Topic.RICH, new String[]{
-                "We're swimming in gold! Like a dragon, but with worse dental care.",
-                "Look at all this money. Somebody's saving up for something big.",
-                "Gold is piling up. My financial advisor says: buy more cavemen."});
+                "We're rollin' in gold! Like a prospector who hit the mother lode.",
+                "Would ya look at all that money. Somebody's savin' up for somethin' big.",
+                "Gold's pilin' up like hay in August. My advice? Buy more cavemen."});
         LINES.put(Topic.BROKE, new String[]{
-                "We are completely broke. The army is running on vibes now.",
-                "Zero gold. Time to sell the volcano.",
-                "Wallet empty. Cavemen are working for exposure now."});
+                "We're flat broke, partner. This army's runnin' on beans and hope.",
+                "Not a single coin left. Reckon we gotta sell the volcano.",
+                "Empty pockets, folks. The boys are workin' for a handshake now."});
         LINES.put(Topic.FILLER, new String[]{
-                "Fun fact: in the Stone Age, a war was just two guys and a disagreement.",
-                "I want to point out that I'm doing all of this without thumbs.",
-                "Is it just me, or does that volcano look like it's judging us?",
-                "Somewhere, a historian is crying.",
-                "The cavemen march on. Nobody told them about lunch breaks.",
-                "If you're just joining us: there's fighting. Lots of fighting.",
-                "Strategy update: hit them more than they hit us. Revolutionary, I know.",
-                "Thanks for watching. Don't forget to like, subscribe, and bring a club."});
+                "Fun fact, folks. In the stone age, a war was just two fellers and a disagreement.",
+                "I'd like to point out I'm doin' all of this without any thumbs.",
+                "Is it just me... or is that volcano lookin' at us funny?",
+                "Somewhere out there, a history teacher is cryin' into his coffee.",
+                "Them cavemen just keep on marchin'. Nobody told 'em about lunch breaks.",
+                "If you're just tunin' in, there's fightin'. A whole lotta fightin'.",
+                "Strategy update, folks. Hit 'em more than they hit us. Revolutionary, I know.",
+                "Back home we'd settle this with a good old fashioned square dance. But here we are."});
         LINES.put(Topic.WIN, new String[]{
-                "Victory! The robot wins! Humans, you may now applaud.",
-                "And that's the game! Their base is rubble, and our cavemen are dancing. Badly.",
-                "We did it! Put that one in the history books. Well, the cave paintings.",
-                "Winner winner, mammoth dinner!"});
+                "Yee-haw! Victory! The robot wins! Y'all may now applaud.",
+                "And that's the ball game, folks! Their base is rubble, and our boys are line dancin'.",
+                "We did it, partner! Put that one in the history books. Well... the cave paintin's.",
+                "Winner winner, mammoth dinner! Yee-haw!"});
         LINES.put(Topic.LOSS, new String[]{
-                "And we lost. I'd like to blame the lag. There is no lag. I'm blaming it anyway.",
-                "Defeat. Our base has been... respectfully demolished. I'm learning from this, I promise.",
-                "Well, that didn't go to plan. Note to self: the enemy also has rocks.",
-                "We lost, folks. Next time I'm trying a different strategy. And possibly a helmet."});
+                "Well, shoot. We lost. I'd blame the lag, but there ain't no lag. Blamin' it anyway.",
+                "Defeat, folks. Our base got... respectfully flattened. I'm learnin' from this, I promise.",
+                "That didn't go to plan, partner. Note to self: the other fellers got rocks too.",
+                "We lost, y'all. Next time we're tryin' a new strategy. And maybe a bigger hat."});
     }
 
     private static final long GAP_MS = 7000;           // between any two lines

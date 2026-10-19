@@ -10,7 +10,8 @@ import java.util.Set;
 
 /**
  * The commentator's voice: the phone's own text-to-speech (works offline with downloaded voices).
- * Picks a male English voice when the phone has one; otherwise lowers the pitch of the default voice.
+ * Picks the best male English (US first) voice the phone has; otherwise lowers the default voice.
+ * Lines are spoken phrase by phrase with pauses and small pitch/pace changes so it sounds less robotic.
  */
 final class Voice {
     private static final String TAG = "AoW2Bot.Voice";
@@ -26,6 +27,8 @@ final class Voice {
     private String pendingTest;
     private final Context ctx;
     private boolean failed = false;
+    private float basePitch = 0.9f;
+    private final java.util.Random rnd = new java.util.Random();
 
     Voice(Context ctx) {
         this.ctx = ctx.getApplicationContext();
@@ -53,12 +56,11 @@ final class Voice {
         if (male != null) {
             tts.setVoice(male);
             voiceName = male.getName();
-            tts.setPitch(0.92f);
+            basePitch = 0.9f;
         } else {
-            tts.setPitch(0.72f);    // no male voice installed: deepen the default one
+            basePitch = 0.78f;      // no male voice installed: deepen the default one
             voiceName = "default (deepened)";
         }
-        tts.setSpeechRate(1.08f);   // casters talk fast
         Log.i(TAG, "voice: " + voiceName);
     }
 
@@ -75,6 +77,8 @@ final class Voice {
             if (score < 0 && (n.contains("male") && !n.contains("female"))) score = 50;
             if (score < 0) continue;
             if (!v.isNetworkConnectionRequired()) score += 200;     // stay offline when we can
+            score += v.getQuality() / 5;                             // very high quality = +100
+            if (n.startsWith("en-us")) score += 30;                  // American voices suit a cowboy
             if (v.getFeatures() != null && v.getFeatures().contains("notInstalled")) score -= 300;
             if (score > bestScore) { bestScore = score; best = v; }
         }
@@ -90,13 +94,47 @@ final class Voice {
                 android.widget.Toast.makeText(ctx, m, android.widget.Toast.LENGTH_LONG).show());
     }
 
-    /** Speaks a line. interrupt=true cuts off whatever is playing; otherwise busy = skip. */
+    /**
+     * Speaks a line like a person would: phrase by phrase, with small pauses, a slow drawl,
+     * a little lift on exclamations and a slower, lower "..." beat.
+     * interrupt=true cuts off whatever is playing; otherwise, if busy, the line is skipped.
+     */
     void speak(String text, boolean interrupt) {
-        if (text == null || tts == null) return;
-        if (failed) return;
+        if (text == null || tts == null || failed) return;
         if (!ready) { if (interrupt) pendingTest = text; return; }
         if (!interrupt && tts.isSpeaking()) return;
-        tts.speak(text, interrupt ? TextToSpeech.QUEUE_FLUSH : TextToSpeech.QUEUE_ADD, null, "c" + System.nanoTime());
+        if (interrupt) tts.stop();
+        java.util.List<String> parts = phrases(text);
+        for (int i = 0; i < parts.size(); i++) {
+            String p = parts.get(i).trim();
+            if (p.isEmpty()) continue;
+            boolean excited = p.endsWith("!");
+            boolean trailing = p.endsWith("...") || p.endsWith("\u2026");
+            float jitter = 1f + (rnd.nextFloat() - 0.5f) * 0.06f;
+            tts.setPitch(basePitch * jitter * (excited ? 1.07f : trailing ? 0.95f : 1f));
+            tts.setSpeechRate((excited ? 1.0f : trailing ? 0.82f : 0.9f) * (1f + (rnd.nextFloat() - 0.5f) * 0.05f));
+            tts.speak(p.replace("...", ","), TextToSpeech.QUEUE_ADD, null, "c" + System.nanoTime());
+            long pause = trailing ? 420 : (p.endsWith(".") || p.endsWith("!") || p.endsWith("?")) ? 220 : 90;
+            if (i < parts.size() - 1) tts.playSilentUtterance(pause, TextToSpeech.QUEUE_ADD, "s" + System.nanoTime());
+        }
+    }
+
+    /** Splits after . ! ? ... and commas, keeping the punctuation. */
+    static java.util.List<String> phrases(String text) {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            cur.append(c);
+            boolean end = c == '!' || c == '?' || (c == '.' && !(i + 1 < text.length() && text.charAt(i + 1) == '.'));
+            boolean comma = c == ',' && cur.length() > 18;
+            if ((end || comma) && (i + 1 >= text.length() || text.charAt(i + 1) == ' ')) {
+                out.add(cur.toString());
+                cur.setLength(0);
+            }
+        }
+        if (cur.length() > 0) out.add(cur.toString());
+        return out;
     }
 
     void shutdown() {
