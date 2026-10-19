@@ -97,8 +97,8 @@ public class BotService extends AccessibilityService {
         public void run() {
             if (status != null) {
                 String head;
-                if (running) head = (paused ? "PAUSED" : "PLAYING") + " · W " + wins + " / L " + losses + " · taps " + taps;
-                else head = "Ready · capture " + (CaptureService.isRunning() ? "ON" : "off") + " · in front: " + currentPackage();
+                if (running) head = "⚔ " + (paused ? "PAUSED" : "PLAYING") + "  ·  W " + wins + " / L " + losses + "  ·  " + taps + " taps";
+                else head = "⚔ AoW2 Bot  ·  capture " + (CaptureService.isRunning() ? "ON" : "off");
                 status.setText(head + (line1.isEmpty() ? "" : "\n" + line1) + (line2.isEmpty() ? "" : "\n" + line2));
             }
             if (!stopped) handler.postDelayed(this, 400);
@@ -113,8 +113,9 @@ public class BotService extends AccessibilityService {
         int pad = dp(5);
         panel.setPadding(pad, pad, pad, pad);
         GradientDrawable bg = new GradientDrawable();
-        bg.setColor(0xD9202124);
-        bg.setCornerRadius(dp(10));
+        bg.setColors(new int[]{0xE61C1F26, 0xE6111317});
+        bg.setCornerRadius(dp(14));
+        bg.setStroke(dp(1), 0xCCFFA726);
         panel.setBackground(bg);
 
         status = new TextView(this);
@@ -124,11 +125,11 @@ public class BotService extends AccessibilityService {
         panel.addView(status);
 
         LinearLayout controls = new LinearLayout(this);
-        startButton = makeButton("▶ Start", 0xFF188038, v -> startOrResume());
+        startButton = makeButton("▶ Start", 0xFF43A047, v -> startOrResume());
         controls.addView(startButton);
-        controls.addView(makeButton("⏸", 0xFF5F6368, v -> pause("Paused by you")));
-        controls.addView(makeButton("■ STOP", 0xFFD93025, v -> stopAll()));
-        controls.addView(makeButton("Snap", 0xFF5F6368, v -> snap()));
+        controls.addView(makeButton("⏸", 0xFF4A4F59, v -> pause("Paused by you")));
+        controls.addView(makeButton("■ STOP", 0xFFE53935, v -> stopAll()));
+        controls.addView(makeButton("📷", 0xFF4A4F59, v -> snap()));
         panel.addView(controls);
 
         panelParams = new WindowManager.LayoutParams(
@@ -258,6 +259,19 @@ public class BotService extends AccessibilityService {
 
     private void end(String why) {
         if (!running) return;
+        // Stopped during or right after a battle: still count a result we can see.
+        worker.execute(() -> {
+            if (brain == null || !brain.inGame()) return;
+            Decision d = new Decision();
+            finishBattle(d);
+            Recorder r = rec;
+            handler.post(() -> {
+                if (r != null) for (String e : d.events) r.json(e);
+                if (d.outcome == Brain.Outcome.WIN) wins++;
+                else if (d.outcome == Brain.Outcome.LOSS) losses++;
+                if (d.outcome != Brain.Outcome.UNKNOWN) toast("Battle result saved: " + d.outcome);
+            });
+        });
         if (rec != null) rec.event("\"event\":\"end\",\"why\":" + Recorder.q(why) + ",\"wins\":" + wins + ",\"losses\":" + losses);
         running = false; paused = false;
         line1 = "Stopped: " + why; line2 = rec != null ? "Log: " + rec.where() : "";
@@ -307,19 +321,35 @@ public class BotService extends AccessibilityService {
         boolean snap;
     }
 
+    private long popMissingSince = 0, lastAutoSnap = 0;
+
+    /** Worker thread: records the result, updates learning and gets a brain for the next battle. */
+    private void finishBattle(Decision d) {
+        Brain.Outcome o = brain.endOfBattle();
+        d.events.addAll(brain.drainEvents());
+        if (o != Brain.Outcome.UNKNOWN) learner.record(brain.profile, o);
+        d.outcome = o;
+        d.events.add("{\"event\":\"learning\",\"table\":" + Recorder.q(learner.table()) + "}");
+        newBrain(brain.useSpell, brain.buyUpgrades);
+    }
+
     /** Worker thread only (all Brain/Learner access happens here). */
     private void think(Frame frame, Decision d) {
         if (brain == null) return;
         long now = System.currentTimeMillis();
         GameState s = Hud.read(frame);
         d.state = s;
-        if (!s.inBattle() && brain.inGame() && now - brain.lastBattleAt() > BATTLE_GONE_MS) {
-            Brain.Outcome o = brain.endOfBattle();
-            d.events.addAll(brain.drainEvents());
-            if (o != Brain.Outcome.UNKNOWN || "Auto".equals(profileMode)) learner.record(brain.profile, o);
-            d.outcome = o;
-            d.events.add("{\"event\":\"learning\",\"table\":" + Recorder.q(learner.table()) + "}");
-            newBrain(brain.useSpell, brain.buyUpgrades);
+        boolean gone = !s.inBattle() && brain.inGame() && now - brain.lastBattleAt() > BATTLE_GONE_MS;
+        boolean decided = s.inBattle() && brain.decided(now);
+        if (gone || decided) {
+            finishBattle(d);
+            if (decided) brain.waitForFreshBattle();   // the result screen may still show the HUD
+        }
+        if (s.inBattle() && s.pop < 0) { if (popMissingSince == 0) popMissingSince = now; }
+        else popMissingSince = 0;
+        if (popMissingSince > 0 && now - popMissingSince > 15000 && now - lastAutoSnap > 120000) {
+            lastAutoSnap = now; d.snap = true;
+            d.events.add("{\"event\":\"note\",\"text\":\"army size unreadable for 15 s, screenshot saved\"}");
         }
         d.action = brain.decide(s, now);
         for (String e : brain.drainEvents()) {
@@ -337,7 +367,7 @@ public class BotService extends AccessibilityService {
         if (d.outcome != null) {
             if (d.outcome == Brain.Outcome.WIN) wins++;
             else if (d.outcome == Brain.Outcome.LOSS) losses++;
-            toast("Battle over: " + d.outcome);
+            toast(d.outcome == Brain.Outcome.WIN ? "Battle won!" : d.outcome == Brain.Outcome.LOSS ? "Battle lost — noted, trying another style next" : "Battle over");
         }
         if (d.snap && now - lastSnapAt > 30000) { lastSnapAt = now; CaptureService.requestSaveFrame(); }
         GameState s = d.state;

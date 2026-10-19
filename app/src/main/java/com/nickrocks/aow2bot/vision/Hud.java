@@ -45,15 +45,7 @@ public final class Hud {
 
         Ocr.Result gold = Ocr.read(f, 470, 160, 572, 189, Ocr.HUD_TEXT, 15, 30, 0.2f);
         s.gold = gold.intValue();
-        Ocr.Result pop = Ocr.read(f, 485, 217, 568, 250, Ocr.HUD_TEXT, 12, 34, 0.2f);
-        if (pop.text != null) {
-            int slash = pop.text.indexOf('/');
-            if (slash > 0 && slash < pop.text.length() - 1 && pop.text.indexOf('/', slash + 1) < 0) {
-                s.pop = parse(pop.text.substring(0, slash));
-                s.popMax = parse(pop.text.substring(slash + 1));
-                if (s.popMax <= 0 || s.pop > s.popMax) { s.pop = -1; s.popMax = -1; }
-            }
-        }
+        readPop(f, s);
 
         s.myHp = greenFraction(f, 15, 565, 104);
         s.enemyHp = greenFraction(f, 1955, 2505, 104);
@@ -77,6 +69,32 @@ public final class Hud {
         if (!s.panelOpen && !s.buildMode) readField(f, s);
         findGreenButtons(f, s, 560, 250, 2000, 950);
         return s;
+    }
+
+    /** Light-blue max population ("/10"). */
+    static final Ocr.Mask POP_MAX = p -> {
+        int r = Frame.r(p), g = Frame.g(p), b = Frame.b(p);
+        return b > 170 && r > 95 && r < 200 && b - r > 30;
+    };
+    static final Ocr.Mask BRIGHT_WHITE = p -> Frame.r(p) > 205 && Frame.g(p) > 205 && Frame.b(p) > 205;
+
+    /** Army size "N/M": the whole text first; if that fails, the white N and the blue M separately. */
+    static void readPop(Frame f, GameState s) {
+        Ocr.Result pop = Ocr.read(f, 485, 217, 568, 250, Ocr.HUD_TEXT, 12, 34, 0.24f);
+        if (pop.text != null) {
+            int slash = pop.text.indexOf('/');
+            if (slash > 0 && slash < pop.text.length() - 1 && pop.text.indexOf('/', slash + 1) < 0) {
+                int a = parse(pop.text.substring(0, slash)), b = parse(pop.text.substring(slash + 1));
+                if (a >= 0 && b > 0 && a <= b) { s.pop = a; s.popMax = b; return; }
+            }
+        }
+        Ocr.Result cur = Ocr.read(f, 485, 217, 568, 250, BRIGHT_WHITE, 15, 34, 0.26f);
+        int a = cur.intValue();
+        if (a < 0 || a > 99) return;
+        Ocr.Result max = Ocr.read(f, 515, 222, 568, 250, POP_MAX, 10, 30, 0.28f);
+        int b = max.intValue();
+        if (b <= 0 || b > 99) b = 10;
+        if (a <= b) { s.pop = a; s.popMax = b; }
     }
 
     static int parse(String t) {
@@ -106,16 +124,21 @@ public final class Hud {
         return n == 0 ? 0 : (float) d / n;
     }
 
-    /** Share of a health bar that is green; -1 when the bar isn't there at all. */
+    /**
+     * Share of a health bar that is green. The bar is recognised by its black outline (row y=91),
+     * so an almost empty bar reads as ~0 instead of "unknown"; -1 only when there is no bar at all.
+     */
     static float greenFraction(Frame f, float x0, float x1, float ly) {
-        int n = 0, gcount = 0, dark = 0;
-        int y = f.Y(ly);
-        for (int x = f.X(x0); x < f.X(x1); x++) {
-            int p = f.px[y * f.w + x]; n++;
-            if (green(p)) gcount++;
-            else if (Frame.r(p) + Frame.g(p) + Frame.b(p) < 200 || Frame.r(p) > Frame.b(p) + 40) dark++;
+        int n = 0, outline = 0, gcount = 0;
+        int yb = f.Y(91), y = f.Y(ly);
+        for (int x = f.X(x0 + 10); x < f.X(x1 - 10); x++) {
+            n++;
+            int b = f.px[yb * f.w + x];
+            if (Frame.r(b) + Frame.g(b) + Frame.b(b) < 120) outline++;
+            if (green(f.px[y * f.w + x])) gcount++;
         }
-        if (n == 0 || gcount + dark < n * 0.8f) return -1;
+        if (n == 0) return -1;
+        if (outline < n * 0.7f && gcount < n * 0.1f) return -1;
         return (float) gcount / n;
     }
 

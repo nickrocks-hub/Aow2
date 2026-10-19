@@ -48,6 +48,9 @@ public final class Brain {
     private float lastMyHp = -1, lastEnemyHp = -1;
     private long lastBattleAt = 0, battleStartAt = 0;
     private boolean inGame = false;
+    /** After a result: do nothing until a fresh battle (both bases healthy) or another screen shows. */
+    private boolean awaitFresh = false;
+    private long myLowSince = 0, enemyLowSince = 0;
     private int age = 1;
 
     // ---- Bookkeeping ----
@@ -85,11 +88,16 @@ public final class Brain {
 
     public Action decide(GameState s, long now) {
         if (!s.inBattle()) {
+            awaitFresh = false;
             if (s.readyButton && now - lastReadyAt > 1500 && now - lastTapAt > TAP_GAP_MS) {
                 lastReadyAt = now; return tap(Hud.READY_X, Hud.READY_Y, "Ready!", now);
             }
             line = "Waiting for the battle screen (" + s.screen + ")";
             return null;
+        }
+        if (awaitFresh) {
+            if (s.myHp >= 0.9f && s.enemyHp >= 0.9f) awaitFresh = false;
+            else { line = "Battle over — waiting for the next one"; return null; }
         }
         if (!inGame) {
             inGame = true; battleStartAt = now;
@@ -131,7 +139,13 @@ public final class Brain {
         }
 
         if (gold < 0) { line = "Reading gold…"; return null; }
-        boolean roomForUnits = pop < 0 || pop < popMax;
+        boolean roomForUnits;
+        if (pop >= 0) roomForUnits = pop < popMax;
+        else {
+            boolean anyLit = false, canPay = false;
+            for (int i = 0; i < 4; i++) { anyLit |= s.unitAvailable[i]; if (cost[i] > 0 && cost[i] <= gold) canPay = true; }
+            roomForUnits = anyLit || !canPay;
+        }
 
         // 5. Danger: units first, strongest we can afford.
         if (danger && roomForUnits) {
@@ -142,7 +156,8 @@ public final class Brain {
         // 6. Plan purchase once the army is big enough.
         Profile.Purchase next = buyUpgrades ? nextPurchase(now) : null;
         int nextPrice = next == null ? 0 : priceOf(next);
-        boolean armyOk = pop >= 0 && (pop >= Math.min(profile.minArmy, popMax) || !roomForUnits);
+        boolean armyOk = !roomForUnits || (pop >= 0 && pop >= Math.min(profile.minArmy, popMax))
+                || (pop < 0 && unitsBought >= profile.minArmy && now - battleStartAt > 40000);
         if (next != null && !danger && armyOk && gold >= nextPrice) {
             startMacro(next, now);
             Action a = runMacro(s, now);
@@ -160,17 +175,28 @@ public final class Brain {
     }
 
     /** Called when the battle screen has been gone for a while: decides the result. */
+    /** True once one base's bar has sat at (almost) zero for over a second: the battle is decided. */
+    public boolean decided(long now) {
+        return inGame && ((myLowSince > 0 && now - myLowSince > 1200) || (enemyLowSince > 0 && now - enemyLowSince > 1200));
+    }
+
+    /** Ends the battle and works out the result from the last health readings. */
     public Outcome endOfBattle() {
         inGame = false;
+        awaitFresh = true;
+        myLowSince = 0; enemyLowSince = 0;
         Outcome o = Outcome.UNKNOWN;
         if (lastEnemyHp >= 0 && lastEnemyHp <= 0.06f) o = Outcome.WIN;
         else if (lastMyHp >= 0 && lastMyHp <= 0.06f) o = Outcome.LOSS;
+        else if (lastMyHp >= 0 && lastEnemyHp >= 0 && lastMyHp < 0.15f && lastEnemyHp > lastMyHp + 0.2f) o = Outcome.LOSS;
         events.add(String.format(Locale.US, "{\"event\":\"battle_end\",\"outcome\":\"%s\",\"hp\":%.2f,\"enemyHp\":%.2f,\"age\":%d,\"secs\":%d,\"stats\":\"%s\"}",
                 o, lastMyHp, lastEnemyHp, age, (lastBattleAt - battleStartAt) / 1000, stats()));
         return o;
     }
 
     public boolean inGame() { return inGame; }
+    /** Ignore the old battle's screen until a fresh battle starts. */
+    public void waitForFreshBattle() { awaitFresh = true; }
     public long lastBattleAt() { return lastBattleAt; }
 
     // =====================================================================
@@ -199,6 +225,8 @@ public final class Brain {
         }
         if (s.myHp >= 0) { lastMyHp = s.myHp; hpHist.addLast(new long[]{now, Math.round(s.myHp * 1000)}); }
         if (s.enemyHp >= 0) lastEnemyHp = s.enemyHp;
+        if (s.myHp >= 0) myLowSince = s.myHp <= 0.03f ? (myLowSince == 0 ? now : myLowSince) : 0;
+        if (s.enemyHp >= 0) enemyLowSince = s.enemyHp <= 0.03f ? (enemyLowSince == 0 ? now : enemyLowSince) : 0;
         while (!hpHist.isEmpty() && now - hpHist.peekFirst()[0] > 8000) hpHist.removeFirst();
     }
 
