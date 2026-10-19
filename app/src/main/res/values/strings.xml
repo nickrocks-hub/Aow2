@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AoW2 Bot</string>
+    <string name="accessibility_label">AoW2 Bot</string>
+    <string name="accessibility_description">Lets AoW2 Bot tap Age of War 2\'s battle buttons (units, spell, evolve, towers, upgrades) after you press Start on its panel, and check which app is in front so it only plays while Age of War 2 is open. It never taps ads or purchases.</string>
+</resources>
